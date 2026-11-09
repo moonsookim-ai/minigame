@@ -38,7 +38,7 @@ window.GAMES = [
     icon: "A♠",
     theme: "felt",
     url: "games/blackjack.html",
-    status: "soon",
+    status: "ready",
   },
   {
     id: "solitaire",
@@ -51,7 +51,7 @@ window.GAMES = [
     icon: "K♥",
     theme: "felt-red",
     url: "games/solitaire.html",
-    status: "soon",
+    status: "ready",
   },
   {
     id: "onecard",
