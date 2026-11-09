@@ -92,7 +92,7 @@
         <span class="pill num">연속 점수 <span id="streak">0</span></span>
         <span class="pill num">최고 <span id="best">0</span></span>
         <span class="spacer"></span>
-        <span class="pill num">남은 카드 <span id="remain">52</span>장</span>
+        <span class="pill num">남은 카드 <span id="remain">52장</span></span>
       </div>
 
       <div class="table-felt hl-table">
@@ -139,7 +139,7 @@
     const curEl = $("current"), nextEl = $("next"), verdictEl = $("verdict"), histEl = $("history");
     const btns = [$("hiBtn"), $("eqBtn"), $("loBtn")];
 
-    let deck, current, streak, best, busy, history, gen = 0, announced = false;
+    let deck, current, streak, best, busy, history, gen = 0, runBest = 0;
 
     function loadBest() {
       try { return +localStorage.getItem(BEST_KEY) || 0; } catch (e) { return 0; }
@@ -167,8 +167,8 @@
       deck = freshDeck();
       current = deck.pop();
       streak = 0;
-      announced = false;
       best = loadBest();
+      runBest = best;
       busy = false;
       history = [];
       verdictEl.textContent = "다음 카드가 더 높을까요, 낮을까요?";
@@ -210,7 +210,7 @@
     function update() {
       $("streak").textContent = streak;
       $("best").textContent = best;
-      $("remain").textContent = deck.length;
+      $("remain").textContent = deck.length + "장";
       $("deckInfo").textContent = deck.length ? `덱 ${deck.length}장` : "다음에 새로 섞어요";
       const o = odds();
       $("hiOdds").textContent = `확률 ${o.hi}%`;
@@ -260,7 +260,7 @@
         streak += gain;
         verdictEl.textContent = `${name}! 정답 +${gain}점`;
         if (streak > best) {
-          if (best > 0 && !announced) { MG.toast("최고 기록 경신!"); announced = true; }
+          if (runBest > 0 && best === runBest) MG.toast("최고 기록 경신!");
           best = streak;
           saveBest(best);
         }
@@ -270,7 +270,7 @@
           : `${name}, 아쉬워요! (${streak}점에서 끝)`;
         if (streak > 0) MG.toast(`연속 ${streak}점 기록으로 끝났어요. 다시 0점부터!`);
         streak = 0;
-        announced = false;
+        runBest = best;
       }
       history.push({ card, ok, label });
       if (history.length > 30) history.shift();

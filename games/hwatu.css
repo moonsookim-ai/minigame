@@ -259,7 +259,7 @@
 .hw-nag { background: #b3261e; color: #fff; }
 
 @media (max-width: 760px) {
-  .hw-table { gap: 10px; --cw-hand: 50px; --cw-floor: 38px; --cw-cap: 24px; --cw-opp: 19px; }
+  .hw-table { gap: 10px; --cw-hand: 50px; --cw-floor: 38px; --cw-cap: 26px; --cw-opp: 21px; }
   .hw-mid { gap: 8px; padding: 8px; }
   .hw-floor { gap: 4px; }
   .hw-opps { grid-template-columns: 1fr; }
@@ -269,3 +269,4 @@
 @media (max-width: 380px) {
   .hw-table { --cw-hand: 46px; --cw-floor: 34px; }
 }
+.hw-cg.empty .hw-fan { min-height: 0; }

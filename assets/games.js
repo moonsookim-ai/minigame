@@ -12,7 +12,7 @@ window.GAMES = [
     icon: "♚",
     theme: "chess",
     url: "games/chess.html",
-    status: "soon",
+    status: "ready",
   },
   {
     id: "omok",
