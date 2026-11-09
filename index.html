@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>미니게임센터</title>
+  <meta name="description" content="체스, 오목, 카드 게임을 한 곳에서 즐기는 미니게임센터">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Noto+Sans+Symbols+2&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="./">
+      <span class="brand-mark" aria-hidden="true">♞</span>
+      <span>미니게임센터</span>
+    </a>
+    <button class="theme-toggle" id="themeToggle" type="button" aria-label="테마 전환">
+      <span aria-hidden="true">◐</span>
+    </button>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-text">
+        <p class="eyebrow">보드 · 카드 · 두뇌 게임</p>
+        <h1>한 판, 가볍게<br>두고 가세요.</h1>
+        <p class="lead">체스와 오목 같은 보드 게임부터 블랙잭, 솔리테어 같은 카드 게임까지. 설치 없이 브라우저에서 바로 즐겨요.</p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="#games">게임 둘러보기</a>
+          <button class="btn btn-ghost" id="randomPick" type="button">아무거나 한 판</button>
+        </div>
+      </div>
+      <div class="hero-art" aria-hidden="true">
+        <div class="float-card c1"><span class="rank">A</span><span class="suit">♠</span></div>
+        <div class="float-card c2 red"><span class="rank">K</span><span class="suit">♥</span></div>
+        <div class="float-piece p1">♛</div>
+        <div class="stone s1"></div>
+        <div class="stone s2"></div>
+        <div class="stone s3"></div>
+      </div>
+    </section>
+
+    <section class="recent" id="recentSection" hidden>
+      <h2 class="section-title">최근 플레이</h2>
+      <div class="recent-list" id="recentList"></div>
+    </section>
+
+    <section class="games" id="games">
+      <div class="games-head">
+        <h2 class="section-title">게임 목록</h2>
+        <div class="filters" role="tablist" aria-label="게임 분류">
+          <button class="chip is-active" role="tab" aria-selected="true" data-filter="all">전체</button>
+          <button class="chip" role="tab" aria-selected="false" data-filter="board">보드 게임</button>
+          <button class="chip" role="tab" aria-selected="false" data-filter="card">카드 게임</button>
+        </div>
+      </div>
+      <div class="grid" id="gameGrid"></div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>© 미니게임센터 · 새로운 게임이 계속 추가됩니다</p>
+  </footer>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="assets/games.js"></script>
+  <script src="assets/main.js"></script>
+</body>
+</html>
