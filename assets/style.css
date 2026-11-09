@@ -196,8 +196,8 @@ button { font: inherit; color: inherit; }
 .float-card .rank { font-size: 28px; line-height: 1; }
 .float-card .suit { align-self: center; font-size: 64px; line-height: 1; margin-bottom: 20%; }
 .float-card.red { color: #c0392b; }
-.c1 { left: 12%; top: 14%; transform: rotate(-10deg); animation: bob 6s ease-in-out infinite; }
-.c2 { left: 34%; top: 22%; transform: rotate(8deg); animation: bob 6s ease-in-out -3s infinite; }
+.hero-art .c1 { left: 12%; top: 14%; transform: rotate(-10deg); animation: bob 6s ease-in-out infinite; }
+.hero-art .c2 { left: 34%; top: 22%; transform: rotate(8deg); animation: bob 6s ease-in-out -3s infinite; }
 
 .float-piece {
   position: absolute;
@@ -217,9 +217,9 @@ button { font: inherit; color: inherit; }
   border-radius: 50%;
   box-shadow: 0 6px 12px rgba(0, 0, 0, .3);
 }
-.s1 { right: 22%; bottom: 14%; background: radial-gradient(circle at 35% 30%, #555, #0d0d0d 70%); }
-.s2 { right: 9%; bottom: 26%; background: radial-gradient(circle at 35% 30%, #fff, #d8d3c8 75%); }
-.s3 { right: 35%; bottom: 30%; background: radial-gradient(circle at 35% 30%, #555, #0d0d0d 70%); }
+.hero-art .s1 { right: 22%; bottom: 14%; background: radial-gradient(circle at 35% 30%, #555, #0d0d0d 70%); }
+.hero-art .s2 { right: 9%; bottom: 26%; background: radial-gradient(circle at 35% 30%, #fff, #d8d3c8 75%); }
+.hero-art .s3 { right: 35%; bottom: 30%; background: radial-gradient(circle at 35% 30%, #555, #0d0d0d 70%); }
 
 @keyframes bob {
   50% { translate: 0 -8px; }

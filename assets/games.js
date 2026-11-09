@@ -25,7 +25,7 @@ window.GAMES = [
     icon: "●",
     theme: "omok",
     url: "games/omok.html",
-    status: "soon",
+    status: "ready",
   },
   {
     id: "blackjack",
@@ -77,7 +77,7 @@ window.GAMES = [
     icon: "Q♣",
     theme: "felt-gold",
     url: "games/highlow.html",
-    status: "soon",
+    status: "ready",
   },
   {
     id: "memory",
@@ -90,7 +90,7 @@ window.GAMES = [
     icon: "?",
     theme: "felt-purple",
     url: "games/memory.html",
-    status: "soon",
+    status: "ready",
   },
   {
     id: "matgo",
@@ -103,7 +103,7 @@ window.GAMES = [
     icon: "光",
     cards: 2,
     url: "games/matgo.html",
-    status: "soon",
+    status: "ready",
   },
   {
     id: "gostop",
@@ -116,6 +116,6 @@ window.GAMES = [
     icon: "光",
     cards: 3,
     url: "games/gostop.html",
-    status: "soon",
+    status: "ready",
   },
 ];
