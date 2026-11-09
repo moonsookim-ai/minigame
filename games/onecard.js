@@ -34,6 +34,10 @@
     return word + (jong ? pair[0] : pair[1]);
   }
 
+  function subjOf(p) {
+    return p.human ? "내가" : josa(p.name, ["이", "가"]);
+  }
+
   let G = null; // 게임 상태
   let gameSeq = 0;
   let humanResolve = null;
@@ -140,8 +144,8 @@
       let action;
       if (p.human) {
         action = await new Promise((res) => { humanResolve = res; });
+        if (seq !== gameSeq || !action) return; // 새 게임이 시작됨
         humanResolve = null;
-        if (seq !== gameSeq || !action) return;
       } else {
         await MG.sleep(AI_DELAY);
         if (seq !== gameSeq) return;
@@ -158,7 +162,7 @@
     const idx = p.hand.indexOf(card);
     p.hand.splice(idx, 1);
     G.discard.push(card);
-    const subj = josa(p.name, ["이", "가"]);
+    const subj = subjOf(p);
     const lb = label(card);
     G.suit = card.joker ? null : card.suit;
     G.rank = card.joker ? 0 : card.rank;
@@ -202,7 +206,7 @@
   }
 
   function applyDraw(p) {
-    const subj = josa(p.name, ["이", "가"]);
+    const subj = subjOf(p);
     if (G.attack > 0) {
       const want = G.attack;
       const got = drawCards(p, want);
@@ -239,8 +243,8 @@
       .map((p) => `<li>${p.name} — ${p.out ? "파산" : p === winner ? "승리" : p.hand.length + "장 남음"}</li>`)
       .join("");
     const title = won ? "승리했어요!" : "아쉽게 졌어요";
-    const head = winner ? `${josa(winner.name, ["이", "가"])} ${why}.` : `${why}.`;
-    addLog(winner ? `${josa(winner.name, ["이", "가"])} 이겼어요!` : "게임 종료");
+    const head = winner ? `${subjOf(winner)} ${why}.` : `${why}.`;
+    addLog(winner ? `${subjOf(winner)} 이겼어요!` : "게임 종료");
     MG.showModal({
       title,
       html: `<p>${head}</p><ul>${rows}</ul>`,
