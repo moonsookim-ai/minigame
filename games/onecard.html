@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>원카드 · 미니게임센터</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Noto+Sans+Symbols+2&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/game.css">
+  <style>
+    .oc-felt { display: flex; flex-direction: column; gap: 16px; }
+
+    /* 상대 */
+    .oc-opps { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+    .oc-opp {
+      flex: 1 1 0;
+      min-width: 0;
+      max-width: 240px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 6px 10px;
+      border-radius: 14px;
+      background: rgba(0, 0, 0, .14);
+      border: 2px solid transparent;
+      transition: border-color .2s ease, background .2s ease;
+    }
+    .oc-opp.turn { border-color: #f5c542; background: rgba(245, 197, 66, .12); }
+    .oc-opp.out { opacity: .45; }
+    .oc-opp-name { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 14px; white-space: nowrap; }
+    .oc-opp .card-fan { min-height: calc(32px * 1.4); }
+    .oc-opp .pcard { --w: 32px; }
+    .oc-opp .card-fan > .pcard + .pcard { margin-left: calc(var(--w) * -.68); }
+    .oc-count { font-size: 13px; font-weight: 700; opacity: .9; }
+    .oc-badge {
+      display: inline-block;
+      padding: 1px 7px;
+      border-radius: 999px;
+      background: #f5c542;
+      color: #3a2a00;
+      font-size: 11px;
+      font-weight: 900;
+    }
+    .oc-badge.bad { background: #c0392b; color: #fff; }
+
+    /* 가운데 */
+    .oc-center {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      flex-wrap: wrap;
+    }
+    .oc-pile { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; }
+    .oc-center .pcard { --w: 76px; }
+    .oc-info {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      min-width: 110px;
+    }
+    .oc-suit {
+      display: grid;
+      place-items: center;
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: #fffdf8;
+      color: #1d1b18;
+      font-family: var(--glyph);
+      font-size: 38px;
+      line-height: 1;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, .3);
+    }
+    .oc-suit.red { color: #c0392b; }
+    .oc-suit.any { font-family: inherit; font-size: 14px; font-weight: 900; }
+    .oc-suit-label { font-size: 12px; font-weight: 700; opacity: .9; }
+    .oc-attack {
+      padding: 4px 12px;
+      border-radius: 999px;
+      background: #c0392b;
+      color: #fff;
+      font-weight: 900;
+      font-size: 15px;
+      animation: oc-pulse 1s ease-in-out infinite alternate;
+    }
+    .oc-attack[hidden] { display: none; }
+    @keyframes oc-pulse { from { transform: scale(1); } to { transform: scale(1.08); } }
+    .oc-dir { font-size: 13px; font-weight: 700; opacity: .9; }
+
+    /* 내 손패 */
+    .oc-me {
+      padding: 10px 12px 14px;
+      border-radius: 14px;
+      background: rgba(0, 0, 0, .14);
+      border: 2px solid transparent;
+    }
+    .oc-me.turn { border-color: #f5c542; background: rgba(245, 197, 66, .12); }
+    .oc-me-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-weight: 700; font-size: 14px; }
+    .oc-me-head .hint { font-weight: 500; opacity: .85; font-size: 13px; }
+    .oc-hand { justify-content: center; gap: 6px; padding-top: 8px; }
+    .oc-hand .pcard { --w: 64px; }
+    .oc-hand .pcard.playable { box-shadow: 0 0 0 3px #f5c542, 0 2px 6px rgba(0, 0, 0, .3); }
+    .oc-hand .pcard.flash { animation: oc-in .35s ease; }
+    @keyframes oc-in { from { transform: translateY(-14px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+    /* 기록 */
+    .oc-log {
+      margin: 16px 0 0;
+      padding: 10px 14px;
+      list-style: none;
+      border-radius: 14px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      font-size: 14px;
+      color: var(--muted);
+      min-height: 52px;
+    }
+    .oc-log li { padding: 2px 0; }
+    .oc-log li:first-child { color: var(--text); font-weight: 700; }
+
+    .oc-select {
+      height: 40px;
+      padding: 0 10px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--text);
+      font: inherit;
+      font-size: 14px;
+    }
+    .oc-opp-label { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; }
+    .controls .spacer { flex: 1; }
+
+    .suit-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+    @media (max-width: 760px) {
+      .oc-center { gap: 12px; }
+      .oc-center .pcard { --w: 58px; }
+      .oc-hand .pcard { --w: 50px; }
+      .oc-hand { gap: 5px; }
+      .oc-suit { width: 52px; height: 52px; font-size: 30px; }
+      .oc-info { min-width: 92px; }
+      .oc-opp .pcard { --w: 26px; }
+      .oc-opp .card-fan { min-height: calc(26px * 1.4); }
+      .oc-opp-name { font-size: 13px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="game-top">
+    <a class="back-link" href="../">← 목록</a>
+    <h1 class="game-title">원카드</h1>
+    <button class="btn btn-ghost btn-sm" id="rulesBtn" type="button">규칙</button>
+  </header>
+
+  <main class="game-wrap">
+    <div class="status-bar" id="status">
+      <span class="pill" id="turnPill">차례: -</span>
+      <span class="pill" id="dirPill">방향 →</span>
+      <span class="spacer"></span>
+      <span class="pill" id="deckPill">남은 카드 0</span>
+    </div>
+
+    <section class="table-felt oc-felt" aria-label="게임 테이블">
+      <div class="oc-opps" id="opps"></div>
+
+      <div class="oc-center">
+        <div class="oc-pile">
+          <div id="drawPile"></div>
+          <span id="drawCount">더미 0장</span>
+        </div>
+        <div class="oc-pile">
+          <div id="discardTop"></div>
+          <span>버린 카드</span>
+        </div>
+        <div class="oc-info">
+          <div class="oc-suit" id="suitBadge">♠</div>
+          <span class="oc-suit-label" id="suitLabel">현재 무늬</span>
+          <span class="oc-attack" id="attackBadge" hidden>공격 +0</span>
+          <span class="oc-dir" id="dirLabel"></span>
+        </div>
+      </div>
+
+      <div class="oc-me" id="meBox">
+        <div class="oc-me-head">
+          <span>내 카드 <span id="myCount">0</span>장</span>
+          <span id="myBadge"></span>
+          <span class="hint" id="myHint"></span>
+        </div>
+        <div class="card-row oc-hand" id="hand"></div>
+      </div>
+    </section>
+
+    <ul class="oc-log" id="log" aria-live="polite"></ul>
+
+    <div class="controls">
+      <button class="btn btn-primary btn-sm" id="drawBtn" type="button">카드 받기</button>
+      <span class="spacer"></span>
+      <label class="oc-opp-label">상대 수
+        <select class="oc-select" id="oppSelect">
+          <option value="1">1명</option>
+          <option value="2" selected>2명</option>
+          <option value="3">3명</option>
+        </select>
+      </label>
+      <button class="btn btn-ghost btn-sm" id="newGame" type="button">새 게임</button>
+    </div>
+  </main>
+
+  <script src="../assets/common.js"></script>
+  <script src="../assets/cards.js"></script>
+  <script src="onecard.js"></script>
+</body>
+</html>

@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>체스 · 미니게임센터</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Noto+Sans+Symbols+2&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/game.css">
+  <style>
+    /* 체스판 색 — 밝은/어두운 테마 */
+    .board {
+      --sq-light: #f0d9b5;
+      --sq-dark: #b58863;
+      --co-light: #9a7350;
+      --co-dark: #f6e6cc;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) .board {
+        --sq-light: #d4bc96;
+        --sq-dark: #94704f;
+        --co-light: #7d5c3e;
+        --co-dark: #ecd9bb;
+      }
+    }
+    :root[data-theme="dark"] .board {
+      --sq-light: #d4bc96;
+      --sq-dark: #94704f;
+      --co-light: #7d5c3e;
+      --co-dark: #ecd9bb;
+    }
+
+    .chess-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 560px) minmax(220px, 280px);
+      gap: 20px;
+      justify-content: center;
+      align-items: start;
+    }
+    .board-col { min-width: 0; }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      grid-template-rows: repeat(8, 1fr);
+      width: 100%;
+      aspect-ratio: 1;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 4px solid var(--board-line);
+      box-shadow: var(--shadow);
+      container-type: inline-size;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+
+    .sq {
+      position: relative;
+      display: grid;
+      place-items: center;
+      min-width: 0;
+      min-height: 0;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      font-family: var(--glyph);
+      font-size: 10.6cqw;
+      line-height: 1;
+      cursor: default;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .sq.light { background-color: var(--sq-light); }
+    .sq.dark { background-color: var(--sq-dark); }
+    .sq.mine, .sq.target { cursor: pointer; }
+    .sq:focus-visible { outline: 3px solid var(--accent); outline-offset: -3px; z-index: 2; }
+
+    .sq.last { background-image: linear-gradient(rgba(255, 214, 64, .5), rgba(255, 214, 64, .5)); }
+    .sq.sel { background-image: linear-gradient(rgba(70, 150, 90, .6), rgba(70, 150, 90, .6)); }
+    .sq.check {
+      background-image: radial-gradient(circle, rgba(225, 30, 20, .95) 0, rgba(225, 30, 20, .55) 40%, rgba(225, 30, 20, 0) 72%);
+    }
+    .sq.target::after {
+      content: "";
+      position: absolute;
+      width: 30%;
+      height: 30%;
+      border-radius: 50%;
+      background: rgba(20, 60, 30, .38);
+      pointer-events: none;
+    }
+    .sq.target.cap::after {
+      width: 88%;
+      height: 88%;
+      background: transparent;
+      border: 0.9cqw solid rgba(20, 60, 30, .45);
+    }
+    @media (hover: hover) {
+      .sq.target:hover { background-image: linear-gradient(rgba(70, 150, 90, .45), rgba(70, 150, 90, .45)); }
+      .sq.mine:hover .pc { transform: scale(1.06); }
+    }
+
+    .pc {
+      position: relative;
+      z-index: 1;
+      display: block;
+      transition: transform .12s ease;
+      pointer-events: none;
+    }
+    .pc.w {
+      color: #fffdf6;
+      -webkit-text-stroke: 0.35cqw #1d1b18;
+      paint-order: stroke fill;
+      text-shadow: 0 0.4cqw 0.8cqw rgba(0, 0, 0, .35);
+    }
+    .pc.b {
+      color: #1d1b18;
+      text-shadow: 0 0 1px rgba(255, 255, 255, .4), 0 0.4cqw 0.8cqw rgba(0, 0, 0, .3);
+    }
+
+    .co {
+      position: absolute;
+      font-family: "Noto Sans KR", system-ui, sans-serif;
+      font-size: 2.4cqw;
+      font-weight: 700;
+      line-height: 1;
+      pointer-events: none;
+    }
+    .cr { left: 0.6cqw; top: 0.6cqw; }
+    .cf { right: 0.7cqw; bottom: 0.5cqw; }
+    .sq.light .co { color: var(--co-light); }
+    .sq.dark .co { color: var(--co-dark); }
+
+    /* 상태 줄 */
+    #turnPill.thinking { color: var(--accent); }
+    #turnPill.thinking::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: chessPulse 1s ease-in-out infinite;
+    }
+    @keyframes chessPulse { 50% { opacity: .2; } }
+    .check-note {
+      color: #fff;
+      background: #c4302b;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 900;
+    }
+    .caps-wrap { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+    .caps { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); min-width: 0; }
+    .caps .label { flex: none; }
+    .cap-glyphs { display: flex; flex-wrap: wrap; align-items: center; min-height: 22px; }
+    .cap-glyphs .pc { font-family: var(--glyph); font-size: 20px; line-height: 1; margin-right: -2px; }
+    .cap-glyphs .pc.w { -webkit-text-stroke: 0.9px #1d1b18; text-shadow: none; }
+    .cap-glyphs .pc.b { text-shadow: none; color: var(--text); }
+    .cap-glyphs .none { font-size: 12px; }
+    .cap-glyphs .adv { margin-left: 8px; font-weight: 700; color: var(--text); }
+
+    /* 옆 패널 */
+    .side { display: flex; flex-direction: column; gap: 16px; }
+    .panel {
+      padding: 16px;
+      border-radius: 14px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+    }
+    .panel h2 { margin: 0 0 10px; font-size: 15px; font-weight: 900; }
+    .seg { display: flex; gap: 6px; }
+    .seg .btn { flex: 1; }
+    .seg .btn[aria-pressed="true"] { background: var(--text); color: var(--bg); border-color: var(--text); }
+    .level-note { margin: 8px 0 0; font-size: 12px; color: var(--muted); }
+
+    .moves {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      max-height: 300px;
+      overflow-y: auto;
+      font-size: 14px;
+      font-variant-numeric: tabular-nums;
+    }
+    .moves li { display: grid; grid-template-columns: 34px 1fr 1fr; gap: 4px; padding: 3px 4px; border-radius: 6px; }
+    .moves li:nth-child(odd) { background: var(--surface-2); }
+    .moves .mn { color: var(--muted); }
+    .moves li.empty { display: block; color: var(--muted); background: none; font-size: 13px; }
+    .side .controls { margin-top: 0; }
+    .side .controls .btn { flex: 1; }
+
+    @media (max-width: 860px) {
+      .chess-layout { grid-template-columns: minmax(0, 560px); }
+      .moves { max-height: 160px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="game-top">
+    <a class="back-link" href="../">← 목록</a>
+    <h1 class="game-title">체스</h1>
+    <button class="btn btn-ghost btn-sm" id="rulesBtn" type="button">규칙</button>
+  </header>
+
+  <main class="game-wrap">
+    <div class="status-bar" id="status" aria-live="polite">
+      <span class="pill" id="turnPill">당신 차례 (백)</span>
+      <span class="check-note" id="checkNote" hidden>체크!</span>
+      <span class="spacer"></span>
+      <div class="caps-wrap">
+        <div class="caps"><span class="label">잡은 기물</span><span class="cap-glyphs" id="capMine"></span></div>
+        <div class="caps"><span class="label">잃은 기물</span><span class="cap-glyphs" id="capLost"></span></div>
+      </div>
+    </div>
+
+    <div class="chess-layout">
+      <div class="board-col">
+        <div class="board" id="board" aria-label="체스판"></div>
+      </div>
+      <aside class="side">
+        <div class="controls">
+          <button class="btn btn-primary btn-sm" id="newGame" type="button">새 게임</button>
+          <button class="btn btn-ghost btn-sm" id="undoBtn" type="button">무르기</button>
+        </div>
+        <div class="panel">
+          <h2>컴퓨터 난이도</h2>
+          <div class="seg" role="group" aria-label="난이도">
+            <button class="btn btn-ghost btn-sm" type="button" data-level="easy" aria-pressed="false">쉬움</button>
+            <button class="btn btn-ghost btn-sm" type="button" data-level="normal" aria-pressed="true">보통</button>
+          </div>
+          <p class="level-note">다음 컴퓨터 수부터 적용돼요.</p>
+        </div>
+        <div class="panel">
+          <h2>기보</h2>
+          <ol class="moves" id="moveList"></ol>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <script src="../assets/common.js"></script>
+  <script src="chess.js"></script>
+</body>
+</html>
