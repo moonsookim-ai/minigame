@@ -409,8 +409,11 @@
       S.floor.push(card);
       placed = true;
     } else if (F.length === 1) {
+      S.floor.push(card); // 잠깐 바닥에 겹쳐 보이게
       pair = [card, F[0]];
     } else if (F.length === 2) {
+      S.floor.push(card);
+      render();
       const c = await askChoice(pi, F);
       if (tok !== token) throw new Abort();
       pair = [card, c];
@@ -426,7 +429,6 @@
       } else events.push("싹쓸이(3장)");
     }
     S.fresh.add(card.id);
-    if (pair) S.floor.push(card); // 잠깐 바닥에 겹쳐 보이게
     setLog(msgs.join(" · "));
     render();
     await wait(pi === 0 ? 350 : 550, tok);
