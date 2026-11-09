@@ -1,0 +1,489 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>블랙잭 · 미니게임센터</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Noto+Sans+Symbols+2&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/game.css">
+  <style>
+    .bj-felt { display: flex; flex-direction: column; gap: 18px; min-height: 420px; }
+    .bj-area { min-height: calc(72px * 1.4 + 30px); }
+    .bj-label { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .bj-total {
+      display: inline-block; min-width: 28px; padding: 1px 9px; border-radius: 999px;
+      background: rgba(0, 0, 0, .3); font-weight: 900; font-size: 14px; text-align: center;
+    }
+    .bj-felt .card-fan > .pcard + .pcard { margin-left: calc(var(--w) * -.42); }
+    .bj-msg {
+      text-align: center; font-weight: 700; font-size: 16px; min-height: 26px;
+      padding: 6px 12px; border-radius: 12px; background: rgba(0, 0, 0, .18);
+    }
+    .bj-hands { display: flex; flex-wrap: wrap; gap: 16px; }
+    .bj-hand { padding: 8px; border-radius: 14px; border: 2px solid transparent; }
+    .bj-hand.active { border-color: #f5c542; background: rgba(0, 0, 0, .12); }
+    .bj-hand .bet-tag { font-size: 12px; font-weight: 700; opacity: .85; }
+    .res { padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 900; }
+    .res.win { background: #f5c542; color: #3a2a00; }
+    .res.lose { background: #7a1f1f; color: #fff; }
+    .res.push { background: #d8d3c8; color: #222; }
+    .pcard.deal-in { animation: dealIn .28s ease-out; }
+    @keyframes dealIn { from { opacity: 0; transform: translate(30px, -30px) rotate(8deg); } }
+    @media (prefers-reduced-motion: reduce) { .pcard.deal-in { animation: none; } }
+
+    .bet-panel, .act-panel { align-items: center; }
+    .bet-panel[hidden], .act-panel[hidden], .controls .btn[hidden] { display: none; }
+    .chip-btn {
+      --c: #1f4f7a;
+      width: 56px; height: 56px; border-radius: 50%; cursor: pointer;
+      border: 4px dashed rgba(255, 255, 255, .75);
+      background: var(--c); color: #fff; font-weight: 900; font-size: 15px;
+      box-shadow: 0 0 0 2px var(--c), 0 3px 8px rgba(0, 0, 0, .3);
+      transition: transform .12s ease;
+    }
+    .chip-btn:hover:not(:disabled) { transform: translateY(-2px); }
+    .chip-btn:disabled { opacity: .35; cursor: not-allowed; }
+    .chip-btn[data-v="50"] { --c: #b3261e; }
+    .chip-btn[data-v="100"] { --c: #2a2a2a; }
+    .chip-btn[data-v="500"] { --c: #6b3fa0; }
+    .bet-amount { font-weight: 900; font-size: 18px; min-width: 90px; }
+    .status-bar .msg-right { color: var(--muted); font-size: 14px; }
+    @media (max-width: 760px) {
+      .bj-area { min-height: calc(54px * 1.4 + 30px); }
+      .bj-felt { min-height: 360px; gap: 12px; }
+      .chip-btn { width: 50px; height: 50px; font-size: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="game-top">
+    <a class="back-link" href="../">← 목록</a>
+    <h1 class="game-title">블랙잭</h1>
+    <button class="btn btn-ghost btn-sm" id="rulesBtn" type="button">규칙</button>
+  </header>
+
+  <main class="game-wrap">
+    <div class="status-bar" id="status">
+      <span class="pill">칩 <span id="chips">0</span></span>
+      <span class="pill">베팅 <span id="betShow">0</span></span>
+      <span class="pill">남은 카드 <span id="shoeLeft">0</span></span>
+      <span class="spacer"></span>
+      <span class="msg-right" id="phaseText"></span>
+    </div>
+
+    <section class="table-felt bj-felt" aria-label="블랙잭 테이블">
+      <div class="bj-area">
+        <p class="table-label bj-label">딜러 <span class="bj-total" id="dealerTotal" hidden></span></p>
+        <div class="card-fan" id="dealerCards"></div>
+      </div>
+      <div class="bj-msg" id="msg" aria-live="polite"></div>
+      <div class="bj-area">
+        <div class="bj-hands" id="playerHands"></div>
+      </div>
+    </section>
+
+    <div class="controls bet-panel" id="betPanel">
+      <button class="chip-btn" data-v="10" type="button" aria-label="10 칩 추가">10</button>
+      <button class="chip-btn" data-v="50" type="button" aria-label="50 칩 추가">50</button>
+      <button class="chip-btn" data-v="100" type="button" aria-label="100 칩 추가">100</button>
+      <button class="chip-btn" data-v="500" type="button" aria-label="500 칩 추가">500</button>
+      <button class="btn btn-ghost btn-sm" id="clearBet" type="button">초기화</button>
+      <button class="btn btn-primary btn-sm" id="dealBtn" type="button">딜</button>
+      <button class="btn btn-primary btn-sm" id="refillBtn" type="button" hidden>칩 충전</button>
+    </div>
+
+    <div class="controls act-panel" id="actPanel" hidden>
+      <button class="btn btn-primary btn-sm" id="hitBtn" type="button">히트</button>
+      <button class="btn btn-primary btn-sm" id="standBtn" type="button">스탠드</button>
+      <button class="btn btn-ghost btn-sm" id="doubleBtn" type="button">더블다운</button>
+      <button class="btn btn-ghost btn-sm" id="splitBtn" type="button">스플릿</button>
+    </div>
+
+    <div class="controls">
+      <button class="btn btn-ghost btn-sm" id="newGame" type="button">새 게임</button>
+    </div>
+  </main>
+
+  <script src="../assets/common.js"></script>
+  <script src="../assets/cards.js"></script>
+  <script>
+  (function () {
+    const STORE_KEY = "minigame.blackjack.chips";
+    const START_CHIPS = 1000;
+    const DECKS = 6;
+    const RESHUFFLE_AT = Math.floor(52 * DECKS * 0.25);
+    const $ = (id) => document.getElementById(id);
+
+    // ---------- 점수 계산 ----------
+    function cardValue(c) { return c.rank === 1 ? 1 : Math.min(c.rank, 10); }
+    function handValue(cards) {
+      let low = 0, aces = 0;
+      for (const c of cards) { low += cardValue(c); if (c.rank === 1) aces++; }
+      const soft = aces > 0 && low + 10 <= 21;
+      const total = soft ? low + 10 : low;
+      return { total, low, soft, bust: low > 21 };
+    }
+    function isBlackjack(cards) { return cards.length === 2 && handValue(cards).total === 21; }
+    function totalLabel(cards) {
+      const v = handValue(cards);
+      if (v.soft && v.total !== 21) return v.low + " / " + v.total;
+      return String(v.total);
+    }
+    window.BJ = { handValue, isBlackjack, totalLabel };
+
+    // ---------- 저장 ----------
+    function loadChips() {
+      try {
+        const v = parseInt(localStorage.getItem(STORE_KEY), 10);
+        if (Number.isFinite(v) && v >= 0) return v;
+      } catch (e) {}
+      return START_CHIPS;
+    }
+    function saveChips() { try { localStorage.setItem(STORE_KEY, String(chips)); } catch (e) {} }
+
+    // ---------- 상태 ----------
+    let chips = loadChips();
+    let bet = 0, lastBet = 0;
+    let shoe = [];
+    let dealer = [];
+    let hands = [];
+    let cur = 0;
+    let phase = "bet"; // bet | deal | play | dealer
+    let holeHidden = true;
+    let busy = false;
+
+    function newShoe(announce) {
+      shoe = [];
+      for (let d = 0; d < DECKS; d++) {
+        for (const c of Cards.makeDeck()) shoe.push({ suit: c.suit, rank: c.rank, joker: false, id: d * 52 + c.id });
+      }
+      Cards.shuffle(shoe);
+      if (announce) MG.toast("카드가 얼마 남지 않아 새 슈(6덱)를 섞었어요");
+    }
+    function draw() { const c = shoe.pop(); c.fresh = true; return c; }
+    const fmt = (n) => n.toLocaleString("ko-KR");
+
+    // ---------- 렌더링 ----------
+    function renderCardEl(c, faceDown) {
+      const el = Cards.renderCard(c, { faceDown });
+      if (c.fresh) { el.classList.add("deal-in"); c.fresh = false; }
+      return el;
+    }
+
+    function render() {
+      $("chips").textContent = fmt(chips);
+      const tableBet = phase === "bet" ? bet : hands.reduce((s, h) => s + h.bet, 0);
+      $("betShow").textContent = fmt(tableBet);
+      $("shoeLeft").textContent = shoe.length;
+
+      // 딜러
+      const dc = $("dealerCards");
+      dc.innerHTML = "";
+      if (dealer.length === 0) dc.appendChild(Cards.renderCard(null));
+      dealer.forEach((c, i) => dc.appendChild(renderCardEl(c, i === 1 && holeHidden)));
+      const dt = $("dealerTotal");
+      if (dealer.length) {
+        dt.hidden = false;
+        dt.textContent = holeHidden ? totalLabel([dealer[0]]) + " + ?" : totalLabel(dealer);
+      } else dt.hidden = true;
+
+      // 플레이어
+      const ph = $("playerHands");
+      ph.innerHTML = "";
+      if (hands.length === 0) {
+        const wrap = document.createElement("div");
+        wrap.className = "bj-hand";
+        wrap.innerHTML = '<p class="table-label bj-label">플레이어</p>';
+        const fan = document.createElement("div");
+        fan.className = "card-fan";
+        fan.appendChild(Cards.renderCard(null));
+        wrap.appendChild(fan);
+        ph.appendChild(wrap);
+      }
+      hands.forEach((h, i) => {
+        const wrap = document.createElement("div");
+        wrap.className = "bj-hand" + (phase === "play" && i === cur && hands.length > 1 ? " active" : "");
+        const label = document.createElement("p");
+        label.className = "table-label bj-label";
+        const name = hands.length > 1 ? "핸드 " + (i + 1) : "플레이어";
+        label.innerHTML = `${name} <span class="bj-total">${h.cards.length ? totalLabel(h.cards) : "-"}</span>` +
+          `<span class="bet-tag">베팅 ${fmt(h.bet)}${h.doubled ? " (더블)" : ""}</span>`;
+        if (h.result) {
+          const r = document.createElement("span");
+          r.className = "res " + h.result.cls;
+          r.textContent = h.result.text;
+          label.appendChild(r);
+        }
+        wrap.appendChild(label);
+        const fan = document.createElement("div");
+        fan.className = "card-fan";
+        h.cards.forEach((c) => fan.appendChild(renderCardEl(c, false)));
+        wrap.appendChild(fan);
+        ph.appendChild(wrap);
+      });
+
+      // 패널
+      const betting = phase === "bet";
+      $("betPanel").hidden = !betting;
+      $("actPanel").hidden = phase !== "play";
+      document.querySelectorAll(".chip-btn").forEach((b) => {
+        b.disabled = busy || bet + Number(b.dataset.v) > chips;
+      });
+      $("clearBet").disabled = busy || bet === 0;
+      $("dealBtn").disabled = busy || bet === 0 || bet > chips;
+      const broke = betting && chips < 10 && bet === 0;
+      $("refillBtn").hidden = !broke;
+
+      const h = hands[cur];
+      const canAct = phase === "play" && !busy && h && !h.done;
+      $("hitBtn").disabled = !canAct;
+      $("standBtn").disabled = !canAct;
+      $("doubleBtn").disabled = !(canAct && h.cards.length === 2 && chips >= h.bet && !h.splitAces);
+      $("splitBtn").disabled = !(canAct && h.cards.length === 2 && cardValue(h.cards[0]) === cardValue(h.cards[1]) &&
+        chips >= h.bet && hands.length < 4);
+
+      $("phaseText").textContent = {
+        bet: "베팅하세요", deal: "카드를 나누는 중…", play: "당신의 차례", dealer: "딜러 차례",
+      }[phase];
+    }
+
+    function setMsg(t) { $("msg").textContent = t; }
+
+    // ---------- 베팅 ----------
+    document.querySelectorAll(".chip-btn").forEach((b) => {
+      b.addEventListener("click", () => {
+        if (phase !== "bet" || busy) return;
+        const v = Number(b.dataset.v);
+        if (bet + v > chips) { MG.toast("칩이 부족해요"); return; }
+        if (bet === 0 && hands.length) { dealer = []; hands = []; }
+        bet += v;
+        setMsg("베팅 " + fmt(bet) + " 칩 — 준비되면 딜을 누르세요");
+        render();
+      });
+    });
+    $("clearBet").addEventListener("click", () => { bet = 0; setMsg("칩을 눌러 베팅 금액을 정하세요"); render(); });
+    $("refillBtn").addEventListener("click", refill);
+    function refill() {
+      chips = START_CHIPS; saveChips();
+      MG.toast("칩 1,000개를 충전했어요");
+      setMsg("칩을 눌러 베팅 금액을 정하세요");
+      render();
+    }
+
+    // ---------- 진행 ----------
+    async function deal() {
+      if (phase !== "bet" || busy || bet <= 0 || bet > chips) return;
+      busy = true;
+      if (shoe.length < RESHUFFLE_AT) newShoe(true);
+      chips -= bet; saveChips();
+      lastBet = bet;
+      dealer = [];
+      hands = [{ cards: [], bet, done: false, doubled: false, split: false, splitAces: false, result: null }];
+      bet = 0; cur = 0; holeHidden = true; phase = "deal";
+      setMsg("");
+      render();
+      const h = hands[0];
+      for (const target of [h.cards, dealer, h.cards, dealer]) {
+        await MG.sleep(320);
+        target.push(draw());
+        render();
+      }
+      await MG.sleep(250);
+      const pBJ = isBlackjack(h.cards);
+      const up = cardValue(dealer[0]);
+      const dBJ = isBlackjack(dealer);
+      if ((up === 1 || up === 10) && dBJ) {
+        setMsg("딜러가 홀 카드를 확인합니다…");
+        await MG.sleep(500);
+        busy = false;
+        return finish();
+      }
+      if (pBJ) {
+        setMsg("블랙잭!");
+        busy = false;
+        return finish();
+      }
+      phase = "play";
+      busy = false;
+      setMsg("히트 또는 스탠드를 고르세요");
+      render();
+    }
+
+    // 현재 핸드 준비(스플릿된 핸드는 두 번째 카드를 받음). 끝난 핸드는 건너뜀.
+    async function advance() {
+      while (cur < hands.length) {
+        const h = hands[cur];
+        if (!h.done && h.cards.length === 1) {
+          render();
+          await MG.sleep(350);
+          h.cards.push(draw());
+          render();
+        }
+        if (!h.done && (h.splitAces || handValue(h.cards).total === 21)) h.done = true;
+        if (h.done) { cur++; continue; }
+        break;
+      }
+      if (cur >= hands.length) return dealerTurn();
+      phase = "play";
+      if (hands.length > 1) setMsg("핸드 " + (cur + 1) + " 차례");
+      render();
+    }
+
+    async function act(fn) {
+      if (phase !== "play" || busy) return;
+      busy = true;
+      render();
+      try { await fn(hands[cur]); } finally { busy = false; }
+      if (phase === "play") render();
+    }
+
+    async function hit(h) {
+      await MG.sleep(150);
+      h.cards.push(draw());
+      render();
+      const v = handValue(h.cards);
+      if (v.bust) { setMsg("버스트!"); h.done = true; await MG.sleep(450); }
+      else if (v.total === 21) h.done = true;
+      if (h.done) { cur++; await advance(); }
+    }
+    async function stand(h) { h.done = true; cur++; await advance(); }
+    async function doubleDown(h) {
+      if (h.cards.length !== 2 || chips < h.bet) return;
+      chips -= h.bet; saveChips();
+      h.bet *= 2; h.doubled = true;
+      render();
+      await MG.sleep(250);
+      h.cards.push(draw());
+      render();
+      if (handValue(h.cards).bust) setMsg("버스트!");
+      h.done = true;
+      await MG.sleep(450);
+      cur++;
+      await advance();
+    }
+    async function split(h) {
+      if (h.cards.length !== 2 || cardValue(h.cards[0]) !== cardValue(h.cards[1]) || chips < h.bet || hands.length >= 4) return;
+      chips -= h.bet; saveChips();
+      const aces = h.cards[0].rank === 1;
+      const second = h.cards.pop();
+      h.split = true; h.splitAces = aces;
+      hands.splice(cur + 1, 0, { cards: [second], bet: h.bet, done: false, doubled: false, split: true, splitAces: aces, result: null });
+      setMsg(aces ? "에이스 스플릿 — 각 핸드에 한 장씩만 받아요" : "스플릿!");
+      await advance();
+    }
+
+    async function dealerTurn() {
+      phase = "dealer";
+      holeHidden = false;
+      setMsg("딜러 차례");
+      render();
+      await MG.sleep(600);
+      const anyAlive = hands.some((h) => !handValue(h.cards).bust);
+      if (anyAlive) {
+        while (handValue(dealer).total < 17) {
+          dealer.push(draw());
+          render();
+          await MG.sleep(650);
+        }
+      }
+      finish();
+    }
+
+    function finish() {
+      holeHidden = false;
+      const d = handValue(dealer);
+      const dBJ = isBlackjack(dealer);
+      let returned = 0, staked = 0;
+      const lines = [];
+      hands.forEach((h, i) => {
+        const v = handValue(h.cards);
+        const pBJ = !h.split && isBlackjack(h.cards);
+        let pay = 0, r;
+        if (v.bust) r = { cls: "lose", text: "버스트" };
+        else if (pBJ && !dBJ) { pay = h.bet * 2.5; r = { cls: "win", text: "블랙잭" }; }
+        else if (pBJ && dBJ) { pay = h.bet; r = { cls: "push", text: "푸시" }; }
+        else if (dBJ) r = { cls: "lose", text: "패" };
+        else if (d.bust || v.total > d.total) { pay = h.bet * 2; r = { cls: "win", text: "승" }; }
+        else if (v.total === d.total) { pay = h.bet; r = { cls: "push", text: "푸시" }; }
+        else r = { cls: "lose", text: "패" };
+        pay = Math.floor(pay);
+        h.result = r;
+        returned += pay; staked += h.bet;
+        lines.push(`${hands.length > 1 ? "핸드 " + (i + 1) : "플레이어"}: ${v.total} — ${r.text} (${pay - h.bet >= 0 ? "+" : ""}${fmt(pay - h.bet)})`);
+      });
+      chips += returned; saveChips();
+      const net = returned - staked;
+      phase = "bet";
+      busy = false;
+      const dealerText = dBJ ? "블랙잭" : d.bust ? d.total + " (버스트)" : String(d.total);
+      let title;
+      if (hands.some((h) => h.result.text === "블랙잭") && net > 0) title = "블랙잭!";
+      else if (net > 0) title = "승리!";
+      else if (net === 0) title = "무승부";
+      else title = "패배";
+      const netText = (net > 0 ? "+" : "") + fmt(net) + " 칩";
+      setMsg(`${title} ${netText} · 다시 베팅하세요`);
+      render();
+
+      const html = `<p>딜러: <b>${dealerText}</b></p><ul>${lines.map((l) => `<li>${l}</li>`).join("")}</ul>` +
+        `<p>결과: <b>${netText}</b> · 보유 칩 <b>${fmt(chips)}</b></p>`;
+      const buttons = [];
+      if (chips >= lastBet && lastBet > 0) {
+        buttons.push({ label: "같은 금액으로 다시 (" + fmt(lastBet) + ")", primary: true, onClick: () => { dealer = []; hands = []; bet = lastBet; deal(); } });
+        buttons.push({ label: "베팅 변경" });
+      } else if (chips < 10) {
+        buttons.push({ label: "칩 충전", primary: true, onClick: refill });
+        buttons.push({ label: "닫기" });
+      } else {
+        buttons.push({ label: "확인", primary: true });
+      }
+      setTimeout(() => MG.showModal({ title, html, buttons }), 350);
+    }
+
+    $("dealBtn").addEventListener("click", deal);
+    $("hitBtn").addEventListener("click", () => act(hit));
+    $("standBtn").addEventListener("click", () => act(stand));
+    $("doubleBtn").addEventListener("click", () => act(doubleDown));
+    $("splitBtn").addEventListener("click", () => act(split));
+
+    $("newGame").addEventListener("click", () => {
+      if (busy) return;
+      MG.showModal({
+        title: "새 게임",
+        html: "<p>칩을 1,000개로 초기화하고 카드를 새로 섞을까요?</p>",
+        buttons: [
+          { label: "새로 시작", primary: true, onClick: () => {
+            chips = START_CHIPS; saveChips(); bet = 0; lastBet = 0;
+            dealer = []; hands = []; phase = "bet"; newShoe(false);
+            setMsg("칩을 눌러 베팅 금액을 정하세요"); render();
+          } },
+          { label: "취소" },
+        ],
+      });
+    });
+
+    $("rulesBtn").addEventListener("click", () => {
+      MG.showModal({
+        title: "블랙잭 규칙",
+        html: `<ul>
+          <li>카드 합을 21에 가깝게 만들어 딜러를 이기면 됩니다. 21을 넘으면 <b>버스트</b>로 집니다.</li>
+          <li>J·Q·K는 10, A는 1 또는 11로 계산합니다. A를 11로 셀 수 있으면 "7 / 17"처럼 두 값을 보여 줍니다.</li>
+          <li>처음 두 장이 A + 10점 카드면 <b>블랙잭</b>으로 베팅의 <b>3:2</b>를 받습니다. 일반 승리는 1:1, 비기면(푸시) 베팅을 돌려받습니다.</li>
+          <li><b>히트</b>: 한 장 더 받기 · <b>스탠드</b>: 멈추기 · <b>더블다운</b>: 첫 두 장일 때 베팅을 두 배로 하고 한 장만 받기 · <b>스플릿</b>: 같은 점수 두 장을 두 핸드로 나누기(최대 4핸드, A 스플릿은 한 장씩만).</li>
+          <li>딜러는 16 이하에서 반드시 히트하고, 17 이상(소프트 17 포함)이면 멈춥니다. 딜러의 두 번째 카드는 플레이어 차례가 끝날 때까지 뒤집혀 있습니다(A·10 노출 시 블랙잭 여부는 먼저 확인).</li>
+          <li>카드는 6덱(312장) 슈를 쓰며, 남은 카드가 4분의 1 아래로 줄면 새로 섞습니다.</li>
+          <li>칩 1,000개로 시작하며 이 브라우저에 저장됩니다. 칩이 떨어지면 <b>칩 충전</b>으로 다시 받을 수 있어요.</li>
+        </ul>`,
+      });
+    });
+
+    newShoe(false);
+    setMsg(chips < 10 ? "칩이 부족해요 — 칩 충전을 누르세요" : "칩을 눌러 베팅 금액을 정하세요");
+    render();
+  })();
+  </script>
+</body>
+</html>

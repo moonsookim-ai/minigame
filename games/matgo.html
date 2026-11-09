@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>맞고 · 미니게임센터</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Noto+Sans+Symbols+2&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="../assets/game.css">
+  <link rel="stylesheet" href="hwatu.css">
+</head>
+<body data-players="2">
+  <header class="game-top">
+    <a class="back-link" href="../">← 목록</a>
+    <h1 class="game-title">맞고</h1>
+    <button class="btn btn-ghost btn-sm" id="rulesBtn" type="button">규칙</button>
+  </header>
+
+  <main class="game-wrap">
+    <div class="status-bar" id="status"></div>
+    <div class="table-felt hw-table">
+      <div class="hw-opps" id="hwOpps"></div>
+      <div class="hw-mid">
+        <div class="hw-pile" id="hwPile" title="더미"></div>
+        <div class="hw-floor" id="hwFloor"></div>
+      </div>
+      <p class="hw-log" id="hwLog" aria-live="polite"></p>
+      <section class="hw-me">
+        <div class="hw-mehead" id="hwMeHead"></div>
+        <div class="hw-cap" id="hwMeCap"></div>
+        <div class="hw-hand" id="hwHand"></div>
+      </section>
+    </div>
+    <div class="controls">
+      <button class="btn btn-primary btn-sm" id="newGame" type="button">새 게임</button>
+      <button class="btn btn-ghost btn-sm" id="resetMoney" type="button">점수 초기화</button>
+    </div>
+  </main>
+
+  <script src="../assets/common.js"></script>
+  <script src="hwatu.js"></script>
+</body>
+</html>

@@ -2,7 +2,7 @@
   const games = window.GAMES || [];
   const grid = document.getElementById("gameGrid");
   const toastEl = document.getElementById("toast");
-  const CATEGORY_LABEL = { board: "보드 게임", card: "카드 게임" };
+  const CATEGORY_LABEL = { board: "보드 게임", card: "카드 게임", hwatu: "화투" };
   const RECENT_KEY = "minigame.recent";
   const THEME_KEY = "minigame.theme";
 
@@ -57,6 +57,13 @@
         <i class="st b" style="--x:1;--y:1"></i><i class="st w" style="--x:2;--y:1"></i>
         <i class="st b" style="--x:2;--y:2"></i><i class="st b" style="--x:3;--y:3"></i>
         <i class="st w" style="--x:1;--y:3"></i><i class="st b" style="--x:4;--y:4"></i>
+      </div>`;
+    }
+    if (g.category === "hwatu") {
+      const backs = '<div class="hw-card back"></div>'.repeat(g.cards - 1);
+      return `<div class="art art-hwatu n${g.cards}">
+        ${backs}
+        <div class="hw-card face"><span class="hw-sun"></span><span class="hw-mark">${g.icon}</span></div>
       </div>`;
     }
     const red = /[♥♦]/.test(g.icon);
