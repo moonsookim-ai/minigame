@@ -83,10 +83,10 @@
     }
     .pt::before { left: 0; right: 0; top: calc(50% - .5px); height: 1px; }
     .pt::after { top: 0; bottom: 0; left: calc(50% - .5px); width: 1px; }
-    .pt.c0::before { left: 50%; }
-    .pt.c14::before { right: 50%; }
-    .pt.r0::after { top: 50%; }
-    .pt.r14::after { bottom: 50%; }
+    .pt.left::before { left: 50%; }
+    .pt.right::before { right: 50%; }
+    .pt.top::after { top: 50%; }
+    .pt.bottom::after { bottom: 50%; }
     .pt.edge-r::before { height: 2px; top: calc(50% - 1px); }
     .pt.edge-c::after { width: 2px; left: calc(50% - 1px); }
     .star {
@@ -193,7 +193,9 @@
       for (let c = 0; c < N; c++) {
         const b = document.createElement("button");
         b.type = "button";
-        b.className = `pt r${r} c${c}`;
+        b.className = "pt";
+        if (r === 0) b.classList.add("top"); if (r === N - 1) b.classList.add("bottom");
+        if (c === 0) b.classList.add("left"); if (c === N - 1) b.classList.add("right");
         if (r === 0 || r === N - 1) b.classList.add("edge-r");
         if (c === 0 || c === N - 1) b.classList.add("edge-c");
         b.dataset.r = r;
