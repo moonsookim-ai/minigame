@@ -398,7 +398,9 @@
     p.hand.splice(p.hand.indexOf(card), 1);
     const m = card.m;
     const F = S.floor.filter((c) => c.m === m);
+    // 가져온 카드는 바로 먹은 패로 옮긴다 (총 48장 유지)
     const take = [];
+    take.push = (...cs) => { cs.forEach((c) => { Array.prototype.push.call(take, c); p.cap.push(c); }); return take.length; };
     let steal = 0;
     const events = [];
     let placed = false;
@@ -432,7 +434,6 @@
     setLog(msgs.join(" · "));
     render();
     await wait(pi === 0 ? 350 : 550, tok);
-    if (pair) removeFrom(S.floor, [card]);
 
     // 더미 뒤집기
     const D = S.pile.pop();
@@ -447,13 +448,13 @@
           events.push("쪽");
         } else if (F.length === 1) {
           // 뻑: 세 장이 바닥에 남는다
-          S.floor.push(card, D);
+          S.floor.push(D);
           pair = null;
           S.ppeok[m] = pi;
           events.push("뻑");
         } else {
           // 따닥
-          removeFrom(S.floor, F);
+          removeFrom(S.floor, F.concat(card));
           take.push(card, ...F, D);
           pair = null;
           steal += 1;
@@ -461,7 +462,7 @@
         }
       } else {
         if (pair) {
-          removeFrom(S.floor, [pair[1]]);
+          removeFrom(S.floor, pair);
           take.push(...pair);
           pair = null;
         }
@@ -489,12 +490,11 @@
         }
       }
     } else if (pair) {
-      removeFrom(S.floor, [pair[1]]);
+      removeFrom(S.floor, pair);
       take.push(...pair);
     }
 
     take.forEach((c) => S.fresh.add(c.id));
-    p.cap.push(...take);
     // 쓸: 바닥을 비웠을 때 (마지막 차례 제외)
     const anyLeft = S.players.some((q) => q.hand.length > 0);
     if (S.floor.length === 0 && take.length && anyLeft) {
