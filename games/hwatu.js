@@ -222,7 +222,7 @@
       const counts = {};
       floor.forEach((c) => (counts[c.m] = (counts[c.m] || 0) + 1));
       if (Object.values(counts).some((v) => v >= 4)) continue; // 바닥에 같은 월 4장 → 다시 섞기
-      S.players = hands.map((h, i) => ({ name: NAMES[i], ai: i > 0, hand: sortHand(h), cap: [], go: 0, goScore: 0 }));
+      S.players = hands.map((h, i) => ({ name: NAMES[i], ai: i > 0, hand: sortHand(h), cap: [], go: 0, goScore: 0, shake: 0, bombSkips: 0 }));
       S.floor = floor;
       S.pile = d;
       return;
@@ -231,6 +231,14 @@
   function sortHand(h) {
     const order = { gwang: 0, yeol: 1, tti: 2, pi: 3 };
     return h.sort((a, b) => a.m - b.m || order[a.t] - order[b.t]);
+  }
+
+  // 낼 패도, 폭탄 패(뒤집기만)도 남지 않았는가
+  function out(q) {
+    return q.hand.length === 0 && !q.bombSkips;
+  }
+  function shakeMulOf(q) {
+    return 2 ** (q.shake || 0);
   }
 
   function totalCards() {
@@ -258,7 +266,7 @@
 
   function scoreLabel(p) {
     const sc = scoreOf(p.cap).total;
-    return `${sc}점${p.go ? ` · <span class="hw-go">${p.go}고</span>` : ""}`;
+    return `${sc}점${p.go ? ` · <span class="hw-go">${p.go}고</span>` : ""}${p.shake ? ` · <span class="hw-go">흔들 ×${shakeMulOf(p)}</span>` : ""}`;
   }
 
   function render() {
@@ -293,7 +301,7 @@
       let x = "";
       if (S.phase === "human") x = "playable" + (floorMonths.has(c.m) ? " match" : "");
       return cardHTML(c, x);
-    }).join("") : "";
+    }).join("") + (me.bombSkips ? `<button type="button" class="hc hw-bombskip${S.phase === "human" ? " playable" : ""}" data-id="bombskip" title="손패를 내지 않고 더미만 뒤집습니다">폭탄 패<br><small>뒤집기만 · ${me.bombSkips}회</small></button>` : "") : "";
     el.hand.classList.toggle("on", S.phase === "human");
     el.log.textContent = S.log;
 
@@ -390,14 +398,19 @@
     return got;
   }
 
-  async function playTurn(pi, card, tok) {
+  // card: 낼 카드 (null 이면 폭탄 패로 더미만 뒤집기), opts.bomb: 같은 월 3장을 한꺼번에 낸다
+  async function playTurn(pi, card, tok, opts) {
     const p = S.players[pi];
     const who = pi === 0 ? "나" : p.name;
+    const bomb = !!(card && opts && opts.bomb);
     S.phase = "busy";
     S.fresh = new Set();
-    p.hand.splice(p.hand.indexOf(card), 1);
-    const m = card.m;
-    const F = S.floor.filter((c) => c.m === m);
+    const m = card ? card.m : 0;
+    let F = [];
+    if (card && !bomb) {
+      p.hand.splice(p.hand.indexOf(card), 1);
+      F = S.floor.filter((c) => c.m === m);
+    }
     // 가져온 카드는 바로 먹은 패로 옮긴다 (총 48장 유지)
     const take = [];
     take.push = (...cs) => { cs.forEach((c) => { Array.prototype.push.call(take, c); p.cap.push(c); }); return take.length; };
@@ -405,15 +418,34 @@
     const events = [];
     let placed = false;
     let pair = null;
-    const msgs = [`${who}: ${cardName(card)} 냄`];
+    const msgs = [];
 
-    if (F.length === 0) {
+    if (!card) {
+      p.bombSkips -= 1;
+      msgs.push(`${who}: 폭탄 패 — 더미만 뒤집기`);
+    } else if (bomb) {
+      // 폭탄: 손의 같은 월 3장 + 바닥 1장을 모두 먹는다
+      const B = p.hand.filter((c) => c.m === m);
+      removeFrom(p.hand, B);
+      const FB = S.floor.filter((c) => c.m === m);
+      removeFrom(S.floor, FB);
+      take.push(...B, ...FB);
+      B.forEach((c) => S.fresh.add(c.id));
+      steal += 1;
+      p.shake += 1;
+      p.bombSkips += 2;
+      events.push("폭탄");
+      msgs.push(`${who}: ${m}월 ${B.length}장 폭탄`);
+    } else if (F.length === 0) {
+      msgs.push(`${who}: ${cardName(card)} 냄`);
       S.floor.push(card);
       placed = true;
     } else if (F.length === 1) {
+      msgs.push(`${who}: ${cardName(card)} 냄`);
       S.floor.push(card); // 잠깐 바닥에 겹쳐 보이게
       pair = [card, F[0]];
     } else if (F.length === 2) {
+      msgs.push(`${who}: ${cardName(card)} 냄`);
       S.floor.push(card);
       render();
       const c = await askChoice(pi, F);
@@ -421,6 +453,7 @@
       pair = [card, c];
     } else {
       // 3장(뻑 또는 처음부터 깔린 3장) → 4장 모두
+      msgs.push(`${who}: ${cardName(card)} 냄`);
       removeFrom(S.floor, F);
       take.push(card, ...F);
       if (S.ppeok[m] !== undefined) {
@@ -430,7 +463,7 @@
         delete S.ppeok[m];
       } else events.push("싹쓸이(3장)");
     }
-    S.fresh.add(card.id);
+    if (card) S.fresh.add(card.id);
     setLog(msgs.join(" · "));
     render();
     await wait(pi === 0 ? 350 : 550, tok);
@@ -440,7 +473,7 @@
     if (D) {
       S.fresh.add(D.id);
       msgs.push(`뒤집기 ${cardName(D)}`);
-      if (D.m === m && F.length < 3) {
+      if (card && !bomb && D.m === m && F.length < 3) {
         if (placed) {
           removeFrom(S.floor, [card]);
           take.push(card, D);
@@ -496,7 +529,7 @@
 
     take.forEach((c) => S.fresh.add(c.id));
     // 쓸: 바닥을 비웠을 때 (마지막 차례 제외)
-    const anyLeft = S.players.some((q) => q.hand.length > 0);
+    const anyLeft = S.players.some((q) => !out(q));
     if (S.floor.length === 0 && take.length && anyLeft) {
       steal += 1;
       events.push("쓸");
@@ -520,7 +553,7 @@
     const sc = scoreOf(p.cap).total;
     const threshold = p.go ? p.goScore + 1 : WIN_AT;
     if (sc >= threshold) {
-      if (p.hand.length === 0) return endRound(pi, tok); // 더 낼 패가 없으면 자동 스톱
+      if (out(p)) return endRound(pi, tok); // 더 낼 패가 없으면 자동 스톱
       const go = await askGo(pi, sc);
       if (tok !== token) throw new Abort();
       if (go) {
@@ -535,9 +568,35 @@
         return endRound(pi, tok);
       }
     }
-    if (S.players.every((q) => q.hand.length === 0)) return endRound(-1, tok);
+    if (S.players.every(out)) return endRound(-1, tok);
     S.turn = (pi + 1) % N;
     return nextTurn(tok);
+  }
+
+  function countInHand(p, m) {
+    return p.hand.filter((c) => c.m === m).length;
+  }
+  function floorCount(m) {
+    return S.floor.filter((c) => c.m === m).length;
+  }
+  // 같은 월 3장 + 바닥 1장 → 폭탄 가능
+  function canBomb(p, c) {
+    return countInHand(p, c.m) >= 3 && floorCount(c.m) === 1;
+  }
+  // 같은 월 3장 + 바닥 0장 → 흔들기 가능 (그 월로 아직 흔들지 않았을 때)
+  function canShake(p, c) {
+    return countInHand(p, c.m) >= 3 && floorCount(c.m) === 0 && !(p.shook || []).includes(c.m);
+  }
+
+  function aiMove(pi) {
+    const p = S.players[pi];
+    if (!p.hand.length) return { card: null };
+    const bombCard = p.hand.find((c) => canBomb(p, c));
+    if (bombCard) return { card: bombCard, bomb: true };
+    const card = aiPick(pi);
+    // 먹을 게 없으면 폭탄 패로 뒤집기만 한다
+    if (p.bombSkips && floorCount(card.m) === 0) return { card: null };
+    return { card, shake: canShake(p, card) && Math.random() < 0.85 };
   }
 
   function aiPick(pi) {
@@ -563,11 +622,23 @@
     return best;
   }
 
+  async function declareShake(pi, card, tok) {
+    const p = S.players[pi];
+    p.shake += 1;
+    (p.shook = p.shook || []).push(card.m);
+    const who = pi === 0 ? "나" : p.name;
+    const shown = p.hand.filter((c) => c.m === card.m).map(cardName).join(", ");
+    setLog(`${who}: 흔들기! (${shown}) — 이기면 ×${shakeMulOf(p)}`);
+    MG.toast(`${pi === 0 ? "" : p.name + " "}흔들기! ${card.m}월 ×3`, 1600);
+    render();
+    await wait(700, tok);
+  }
+
   async function nextTurn(tok) {
     if (tok !== token) return;
     const p = S.players[S.turn];
-    if (p.hand.length === 0) {
-      if (S.players.every((q) => q.hand.length === 0)) return endRound(-1, tok);
+    if (out(p)) {
+      if (S.players.every(out)) return endRound(-1, tok);
       S.turn = (S.turn + 1) % N;
       return nextTurn(tok);
     }
@@ -580,19 +651,46 @@
     setLog(`${p.name} 차례…`);
     render();
     await wait(450, tok);
-    const card = aiPick(S.turn);
-    await playTurn(S.turn, card, tok);
+    const mv = aiMove(S.turn);
+    if (mv.shake) await declareShake(S.turn, mv.card, tok);
+    await playTurn(S.turn, mv.card, tok, { bomb: mv.bomb });
     return afterTurn(S.turn, tok);
+  }
+
+  function ask(title, html, yes, no) {
+    return new Promise((res) => {
+      MG.showModal({
+        title,
+        html,
+        buttons: [
+          { label: yes, primary: true, onClick: () => res(true) },
+          { label: no, onClick: () => res(false) },
+        ],
+      });
+    });
   }
 
   async function humanPlay(id) {
     if (S.phase !== "human" || S.turn !== 0) return;
     const p = S.players[0];
-    const card = p.hand.find((c) => c.id === id);
-    if (!card) return;
     const tok = token;
+    let card = null, bomb = false, shake = false;
+    if (id === "bombskip") {
+      if (!p.bombSkips) return;
+    } else {
+      card = p.hand.find((c) => c.id === id);
+      if (!card) return;
+    }
+    S.phase = "busy"; // 묻는 동안 다른 카드를 누르지 못하게
     try {
-      await playTurn(0, card, tok);
+      if (card && canBomb(p, card)) {
+        bomb = await ask("폭탄?", `<p>손에 ${card.m}월이 3장, 바닥에 1장 있습니다. <b>폭탄</b>을 하면 3장을 한꺼번에 내서 4장을 모두 먹고, 상대마다 피 1장을 뺏습니다. 이기면 <b>×2</b>, 그리고 더미만 뒤집는 <b>폭탄 패</b> 2번을 받습니다.</p>`, "폭탄!", "한 장만 내기");
+      } else if (card && canShake(p, card)) {
+        shake = await ask("흔들기?", `<p>손에 ${card.m}월이 3장 있습니다. <b>흔들기</b>를 하면 상대에게 3장을 보여주고, 이 판을 이기면 점수가 <b>×2</b>가 됩니다.</p>`, "흔들기!", "그냥 내기");
+      }
+      if (tok !== token) return;
+      if (shake) await declareShake(0, card, tok);
+      await playTurn(0, card, tok, { bomb });
       await afterTurn(0, tok);
     } catch (e) {
       if (!(e instanceof Abort)) throw e;
@@ -607,6 +705,7 @@
     const goBonus = Math.min(w.go, 2);
     const goMul = w.go >= 3 ? 2 ** (w.go - 2) : 1;
     const meong = ws.n.y >= 7 ? 2 : 1;
+    const shakeMul = shakeMulOf(w);
     const pts = base + goBonus;
     const rows = [];
     let goBakIdx = -1;
@@ -614,7 +713,7 @@
       if (i === wi) return;
       const qs = scoreOf(q.cap);
       const tags = [];
-      let mul = goMul * meong * S.nagari;
+      let mul = goMul * meong * shakeMul * S.nagari;
       if (ws.pi > 0 && qs.n.p < 7) { mul *= 2; tags.push("피박 ×2"); }
       if (ws.gw > 0 && qs.n.g === 0) { mul *= 2; tags.push("광박 ×2"); }
       if (q.go > 0) {
@@ -630,7 +729,7 @@
         else { r.tags.push(`${S.players[goBakIdx].name}가 대신 냄`); r.pay = 0; }
       });
     } else rows.forEach((r) => (r.pay = r.amount));
-    return { base, goBonus, goMul, meong, pts, rows, ws };
+    return { base, goBonus, goMul, meong, shakeMul, pts, rows, ws };
   }
 
   async function endRound(wi, tok) {
@@ -652,7 +751,7 @@
       const calc = [`기본 ${r.base}점`];
       if (r.goBonus) calc.push(`${w.go}고 +${r.goBonus}`);
       html += `<p><b>${w.name}</b> — ${r.ws.items.join(", ")}</p><p>${calc.join(" ")} = <b>${r.pts}점</b>` +
-        (r.goMul > 1 ? ` · ${w.go}고 ×${r.goMul}` : "") + (r.meong > 1 ? " · 멍따(열끗 7장↑) ×2" : "") +
+        (r.goMul > 1 ? ` · ${w.go}고 ×${r.goMul}` : "") + (r.meong > 1 ? " · 멍따(열끗 7장↑) ×2" : "") + (r.shakeMul > 1 ? ` · 흔들기·폭탄 ${w.shake}번 ×${r.shakeMul}` : "") +
         (S.nagari > 1 ? ` · 나가리 ×${S.nagari}` : "") + `</p><ul class="hw-pay">`;
       let gain = 0;
       r.rows.forEach((row) => {
@@ -669,7 +768,7 @@
       S.starter = wi;
       S.lastResult = { winner: wi, gain, pts: r.pts };
     }
-    html += `<div class="hw-sum">${S.players.map((q) => `<div><b>${q.name}</b> ${scoreOf(q.cap).total}점${q.go ? ` (${q.go}고)` : ""} · ${fmtMoney(S.money[S.players.indexOf(q)])}<br><small>${scoreOf(q.cap).items.join(", ") || "점수 없음"}</small></div>`).join("")}</div>`;
+    html += `<div class="hw-sum">${S.players.map((q) => `<div><b>${q.name}</b> ${scoreOf(q.cap).total}점${q.go ? ` (${q.go}고)` : ""}${q.shake ? ` (흔들 ${q.shake})` : ""} · ${fmtMoney(S.money[S.players.indexOf(q)])}<br><small>${scoreOf(q.cap).items.join(", ") || "점수 없음"}</small></div>`).join("")}</div>`;
     save();
     render();
     MG.showModal({ title, html, buttons: [{ label: "다음 판", primary: true, onClick: () => newRound() }] });
@@ -700,6 +799,8 @@
 <li><b>차례</b>: 손패 1장을 내 같은 월 바닥 카드를 먹고, 더미 맨 위를 뒤집어 한 번 더 맞춥니다. 같은 월이 2장이면 하나를 고릅니다.</li>
 <li><b>뻑</b>: 낸 카드로 1장을 맞췄는데 뒤집은 카드도 같은 월이면 3장이 바닥에 남습니다. 나중에 4번째 카드로 모두 먹으면 상대마다 피 1장(자기 뻑은 2장)을 뺏습니다.</li>
 <li><b>쪽</b>: 낸 카드가 맞지 않았는데 뒤집은 카드가 그 카드와 맞으면 → 피 1장씩 뺏기. <b>따닥</b>: 바닥 2장 + 낸 카드 + 뒤집은 카드 4장 모두 → 피 1장씩. <b>쓸</b>: 바닥을 모두 비우면 → 피 1장씩 (마지막 차례 제외).</li>
+<li><b>흔들기</b>: 손에 같은 월 3장이 있고 바닥에 그 월이 없을 때, 그중 한 장을 내면서 흔들 수 있습니다. 이기면 ×2 (흔들기·폭탄 할 때마다 ×2씩 누적).</li>
+<li><b>폭탄</b>: 손에 같은 월 3장, 바닥에 1장이 있으면 3장을 한꺼번에 내 4장을 모두 먹고 상대마다 피 1장을 뺏습니다. 흔들기처럼 ×2가 붙고, 손패가 2장 줄어든 대신 손패를 내지 않고 더미만 뒤집는 <b>폭탄 패</b>를 2번 받습니다.</li>
 <li><b>광</b>: 3광 3점(비광이 끼면 2점), 4광 4점, 5광 15점.</li>
 <li><b>열끗</b>: 5장 1점, 1장마다 +1. <b>고도리</b>(2·4·8월 새) 5점. 9월 국진은 열끗으로만 셉니다.</li>
 <li><b>띠</b>: 5장 1점, 1장마다 +1. 홍단(1·2·3월)·청단(6·9·10월)·초단(4·5·7월) 각 3점.</li>
@@ -709,7 +810,7 @@
 <li><b>고박</b>: 고를 부른 사람이 지면 ${N === 2 ? "×2를 냅니다" : "다른 진 사람 몫까지 혼자 모두 냅니다"}.</li>
 <li><b>나가리</b>: 아무도 스톱하지 못하고 패가 끝나면 무효, 다음 판은 ×2.</li>
 <li><b>정산</b>: 점당 ${PER_POINT}원, 누적 금액은 이 기기에 저장됩니다.</li>
-<li><b>생략한 규칙</b>: 흔들기·폭탄·총통·3뻑·첫뻑 보너스·보너스패·국진 쌍피 선택은 없습니다.</li>
+<li><b>생략한 규칙</b>: 총통·3뻑·첫뻑 보너스·보너스패·국진 쌍피 선택은 없습니다.</li>
 </ul>`;
   }
 
@@ -733,7 +834,8 @@
     // 손패에 올리면 바닥의 같은 월 강조
     el.hand.addEventListener("pointerover", (e) => {
       const c = e.target.closest(".hc");
-      el.floor.querySelectorAll(".hw-grp").forEach((g) => g.classList.toggle("hover", !!c && S.phase === "human" && g.dataset.m === String(c.className.match(/\bm(\d+)\b/)[1])));
+      const mm = c && c.className.match(/\bm(\d+)\b/);
+      el.floor.querySelectorAll(".hw-grp").forEach((g) => g.classList.toggle("hover", !!mm && S.phase === "human" && g.dataset.m === mm[1]));
     });
     el.hand.addEventListener("pointerleave", () => el.floor.querySelectorAll(".hw-grp.hover").forEach((g) => g.classList.remove("hover")));
     $("rulesBtn").addEventListener("click", () => MG.showModal({ title: (N === 2 ? "맞고" : "고스톱") + " 규칙", html: rulesHTML() }));
@@ -754,6 +856,7 @@
   window.HW = {
     N, MODE, WIN_AT, buildDeck, scoreOf, selfCheck, cardName, settle, totalCards,
     state: S,
+    render: () => render(),
     setSpeed: (v) => (SPEED.v = v),
   };
 
