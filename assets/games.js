@@ -64,7 +64,7 @@ window.GAMES = [
     icon: "7♦",
     theme: "felt-blue",
     url: "games/onecard.html",
-    status: "soon",
+    status: "ready",
   },
   {
     id: "highlow",
